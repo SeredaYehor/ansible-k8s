@@ -1,0 +1,24 @@
+---
+   - name: Including configuration vars
+     include_vars:
+       file: ./variables.yml
+
+   - name: Initializing kubernetes cluster
+     become: yes
+     shell: kubeadm init --pod-network-cidr 192.168.0.0/16
+
+   - name: Creating dir for kubernetes
+     shell: mkdir -p $HOME/.kube
+
+   - name: Copying kube-config
+     shell: sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+   - name: Waiting for kubernetes initialization
+     shell: sleep 30
+
+   - name: Setting up calico network for kubernetes
+     shell: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+   - name: Generating kubeadm token
+     shell: kubeadm token create --print-join-command
+     register: kubeadm_command

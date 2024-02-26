@@ -1,0 +1,14 @@
+- hosts: master_server, minion_servers
+  become: yes
+  roles:
+    - { role: SetupNode }
+
+- hosts: master_server
+  roles:
+    - { role: StartMasterNode }
+
+- hosts: minion_servers
+  become: yes
+  tasks:
+    - name: Connect minions
+      shell: "{{ hostvars['k8s-master-node'].kubeadm_command.stdout }}"

@@ -1,0 +1,6 @@
+{% for host in groups['master_server'] %}
+{{ host }} {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+{% endfor %}
+{% for host in groups['minion_servers'] %}
+{{ host }} {{ hostvars[host]['ansible_default_ipv4']['address'] }}
+{% endfor %}

@@ -1,0 +1,94 @@
+---
+   - name: Including configuration vars
+     include_vars:
+       file: ./variables.yml
+
+   - name: Setting hostname
+     shell: hostnamectl set-hostname {{ inventory_hostname }}
+
+   - name: Creating hosts file with kubernetes hosts
+     template:
+       src: k8s_hosts.j2
+       dest: kubernetes-hosts
+
+   - name: Updating /etc/hosts
+     shell: grep -F -x -v -f /etc/hosts kubernetes-hosts >> /etc/hosts | { grep e || true; }
+
+#   - name: Example using fail and when together
+#     fail:
+#       msg: The system may not be provisioned according to the CMDB status.
+
+   - name: Installing kernel modules
+     shell:
+       cmd: |
+         cat << EOF | tee /etc/modules-load.d/containerd.conf 
+         overlay 
+         br_netfilter 
+         EOF
+
+   - name: Setting up modules
+     shell: modprobe overlay && modprobe br_netfilter
+
+   - name: Updating sysctl settings
+     shell:
+       cmd: |
+         cat <<EOF | tee /etc/sysctl.d/99-kubernetes-cri.conf
+         net.bridge.bridge-nf-call-iptables = 1
+         net.ipv4.ip_forward = 1
+         net.bridge.bridge-nf-call-ip6tables = 1
+         EOF
+
+   - name: Disabling SWAP
+     shell: swapoff -a
+
+   - name: Restarting sysctl
+     shell: sysctl --system
+
+   - name: Installing packages
+     apt:
+       pkg:
+         - containerd
+         - ca-certificates
+         - containernetworking-plugins
+         - runc
+         - apt-transport-https
+         - curl
+       state: present
+       update_cache: yes
+       force_apt_get: yes
+
+   - name: Creating folder for containerd
+     file:
+       state: directory
+       path: /etc/containerd
+
+   - name: Configuring containerd
+     shell:
+       cmd: |
+         containerd config default | tee /etc/containerd/config.toml 
+         sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+
+   - name: Restarting containerd
+     shell: systemctl restart containerd
+
+   - name: Adding gpg key for k8s repo
+     shell: curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+
+   - name: Setting up k8s repo
+     shell:
+       cmd: |
+         cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
+         deb https://apt.kubernetes.io/ kubernetes-xenial main
+         EOF
+
+   - name: Installing kubernetes
+     apt:
+       pkg:
+         - kubeadm
+         - kubectl
+       state: present
+       update_cache: yes
+       force_apt_get: yes
+
+   - name: Mark kubernetes
+     shell: apt-mark hold kubelet kubeadm kubectl
