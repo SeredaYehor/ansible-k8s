@@ -1,0 +1,17 @@
+{{- range until (.Values.studentWorkstationsCount | int) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: service-nginx-lection-{{ . }}
+  name: service-nginx-lection-{{ . }}
+spec:
+  ports:
+  - port: 8{{ . }}
+    protocol: TCP
+    targetPort: 80
+  selector:
+     app: nginx-lection-{{ . }}
+  type: NodePort
+{{- end }}

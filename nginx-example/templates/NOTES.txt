@@ -1,0 +1,1 @@
+File where you can specify additional information about working with chart

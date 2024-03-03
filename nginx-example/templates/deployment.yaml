@@ -1,0 +1,24 @@
+{{- range until (.Values.studentWorkstationsCount | int) }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nginx-lection-{{ . }}
+  name: nginx-lection-{{ . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-lection-{{ . }}
+  template:
+    metadata:
+      labels:
+        app: nginx-lection-{{ . }}
+    spec:
+      containers:
+      - image: {{ $.Values.image.repository }}
+        name: nginx-{{ . }}
+        ports:
+        - containerPort: 80
+{{- end }}

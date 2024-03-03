@@ -1,0 +1,7 @@
+studentWorkstationsCount: 2
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: ""
+
