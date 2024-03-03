@@ -3,22 +3,40 @@
      include_vars:
        file: ./variables.yml
 
+   - name: Check if cluster isn`t working
+     shell: kubectl get nodes 1>/dev/null 2>/dev/null && echo $?
+     register: cluster_initialized
+     ignore_errors: True
+
    - name: Initializing kubernetes cluster
      become: yes
      shell: kubeadm init --pod-network-cidr 192.168.0.0/16
+     when: cluster_initialized.stdout != "0"
 
    - name: Creating dir for kubernetes
      shell: mkdir -p $HOME/.kube
+     when: cluster_initialized.stdout != "0"
 
    - name: Copying kube-config
      shell: sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && sudo chown $(id -u):$(id -g) $HOME/.kube/config
+     when: cluster_initialized.stdout != "0"
 
    - name: Waiting for kubernetes initialization
      shell: sleep 30
+     when: cluster_initialized.stdout != "0"
 
    - name: Setting up calico network for kubernetes
      shell: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+     when: cluster_initialized.stdout != "0"
 
    - name: Generating kubeadm token
      shell: kubeadm token create --print-join-command
      register: kubeadm_command
+     when: cluster_initialized.stdout != "0"
+
+   - name: Downloading kubeadm token for future nodes integrations
+     copy:
+       content: "{{ kubeadm_command.stdout }}"
+       dest: ".kubeadm.txt"
+     delegate_to: localhost
+     when: cluster_initialized.stdout != "0"

@@ -3,8 +3,14 @@
      include_vars:
        file: ./variables.yml
 
+   - name: Check if node is running
+     shell: curl http://localhost:10248/healthz 2>/dev/null
+     register: is_running
+     ignore_errors: True
+
    - name: Setting hostname
      shell: hostnamectl set-hostname {{ inventory_hostname }}
+     when: is_running.stdout != "ok"
 
    - name: Creating hosts file with kubernetes hosts
      template:
@@ -25,9 +31,11 @@
          overlay 
          br_netfilter 
          EOF
+     when: is_running.stdout != "ok"
 
    - name: Setting up modules
      shell: modprobe overlay && modprobe br_netfilter
+     when: is_running.stdout != "ok"
 
    - name: Updating sysctl settings
      shell:
@@ -37,12 +45,15 @@
          net.ipv4.ip_forward = 1
          net.bridge.bridge-nf-call-ip6tables = 1
          EOF
+     when: is_running.stdout != "ok"
 
    - name: Disabling SWAP
      shell: swapoff -a
+     when: is_running.stdout != "ok"
 
    - name: Restarting sysctl
      shell: sysctl --system
+     when: is_running.stdout != "ok"
 
    - name: Installing packages
      apt:
@@ -56,23 +67,28 @@
        state: present
        update_cache: yes
        force_apt_get: yes
+     when: is_running.stdout != "ok"
 
    - name: Creating folder for containerd
      file:
        state: directory
        path: /etc/containerd
+     when: is_running.stdout != "ok"
 
    - name: Configuring containerd
      shell:
        cmd: |
          containerd config default | tee /etc/containerd/config.toml 
          sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+     when: is_running.stdout != "ok"
 
    - name: Restarting containerd
      shell: systemctl restart containerd
+     when: is_running.stdout != "ok"
 
    - name: Adding gpg key for k8s repo
      shell: curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+     when: is_running.stdout != "ok"
 
    - name: Setting up k8s repo
      shell:
@@ -80,6 +96,7 @@
          cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
          deb https://apt.kubernetes.io/ kubernetes-xenial main
          EOF
+     when: is_running.stdout != "ok"
 
    - name: Installing kubernetes
      apt:
@@ -89,6 +106,8 @@
        state: present
        update_cache: yes
        force_apt_get: yes
+     when: is_running.stdout != "ok"
 
    - name: Mark kubernetes
      shell: apt-mark hold kubelet kubeadm kubectl
+     when: is_running.stdout != "ok"

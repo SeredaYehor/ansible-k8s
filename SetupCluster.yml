@@ -8,7 +8,19 @@
     - { role: StartMasterNode }
 
 - hosts: minion_servers
-  become: yes
   tasks:
+    - name: Check if node is running
+      shell: curl http://localhost:10248/healthz 2>/dev/null
+      register: is_running
+      ignore_errors: True
+
+    - name: Get kubeadm join command
+      shell: cat .kubeadm.txt
+      register: join_command
+      delegate_to: localhost
+      when: is_running.stdout != "ok"
+
     - name: Connect minions
-      shell: "{{ hostvars['k8s-master-node'].kubeadm_command.stdout }}"
+      become: yes
+      shell: "{{ join_command.stdout }}"
+      when: is_running.stdout != "ok"
