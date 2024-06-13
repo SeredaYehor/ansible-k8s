@@ -87,14 +87,14 @@
      when: is_running.stdout != "ok"
 
    - name: Adding gpg key for k8s repo
-     shell: curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+     shell: curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/Release.key | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
      when: is_running.stdout != "ok"
 
    - name: Setting up k8s repo
      shell:
        cmd: |
          cat << EOF | sudo tee /etc/apt/sources.list.d/kubernetes.list
-         deb https://apt.kubernetes.io/ kubernetes-xenial main
+         deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kubernetes_version }}/deb/ /
          EOF
      when: is_running.stdout != "ok"
 
