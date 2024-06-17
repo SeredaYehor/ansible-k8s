@@ -102,11 +102,13 @@
      apt:
        pkg:
          - kubeadm
+         - kubelet
          - kubectl
        state: present
        update_cache: yes
        force_apt_get: yes
      when: is_running.stdout != "ok"
+
 
    - name: Mark kubernetes
      shell: apt-mark hold kubelet kubeadm kubectl
